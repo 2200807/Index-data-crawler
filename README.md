@@ -1,8 +1,9 @@
-# PE Futures Tracker
+# PE/PP Futures Tracker
 
-Trading Economics(다롄상품거래소 폴리에틸렌 선물, CNY/T)에서 매일 스팟 가격을
-크롤링해 `data/pe_futures_spot.csv`에 누적한다. 원본 PE격리판 협상 리포트의
-참고 지표(HDPE 현물과는 다른 벤치마크)를 시계열로 쌓기 위한 용도.
+Trading Economics(다롄상품거래소 선물, CNY/T)에서 매일 폴리에틸렌(PE)·
+폴리프로필렌(PP) 스팟 가격을 크롤링해 `data/pe_futures_spot.csv`,
+`data/pp_futures_spot.csv`에 각각 누적한다. 원본 PE격리판 협상 리포트의
+참고 지표(HDPE/PP 현물과는 다른 벤치마크)를 시계열로 쌓기 위한 용도.
 
 ## 매일 실행 (클라우드 크론)
 
@@ -14,10 +15,12 @@ Claude Code 클라우드 라우틴이 매일 09:00 KST(00:00 UTC)에 이 저장�
 
 ```
 pip install requests
-python scripts/fetch_spot.py
+python scripts/fetch_spot.py                # PE + PP 둘 다
+python scripts/fetch_spot.py polyethylene    # PE만
+python scripts/fetch_spot.py polypropylene   # PP만
 ```
 
-## 데이터 스키마 (`data/pe_futures_spot.csv`)
+## 데이터 스키마 (`data/pe_futures_spot.csv`, `data/pp_futures_spot.csv` 공통)
 
 | 컬럼 | 설명 |
 |---|---|
