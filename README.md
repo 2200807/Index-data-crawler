@@ -6,12 +6,17 @@
   (다롄상품거래소, CNY/T) → `data/pe_futures_spot.csv`, `data/pp_futures_spot.csv`
 - **SunSirs** → 황산(Sulfuric Acid)·유황(Sulfur) 현물가 (중국 대량 상품 시세)
   → `data/sulfuric_acid_spot.csv`, `data/sulfur_spot.csv`
+- **Opinet(한국석유공사)** → 국제 원유(Dubai/Brent/WTI)·나프타(Naphtha) **월별 평균가**
+  ($/Bbl), 2024-01부터 → `data/opinet_monthly_avg.csv`
 
 ## 매일 실행 (클라우드 크론)
 
-Claude Code 클라우드 라우틴이 매일 09:00 KST(00:00 UTC)에 이 저장소를 열어
-`scripts/fetch_spot.py`(PE/PP)와 `scripts/fetch_sunsirs.py`(황산/유황)를 실행하고,
-새 행이 추가됐으면 커밋·푸시한다. 이미 있는 날짜는 건드리지 않는다(idempotent).
+Claude Code 클라우드 라우틴이 매일 18:00 KST(09:00 UTC)에 이 저장소를 열어
+`scripts/fetch_spot.py`(PE/PP), `scripts/fetch_sunsirs.py`(황산/유황),
+`scripts/fetch_opinet.py`(원유/나프타 월평균)를 실행하고, 변경된 데이터가 있으면
+커밋·푸시한다. PE/PP·SunSirs는 이미 있는 날짜는 건드리지 않는(idempotent) 방식이고,
+Opinet은 매번 2024-01부터 전체를 다시 계산해 덮어쓴다(진행 중인 이번 달 평균이
+매일 갱신되므로).
 
 ## 로컬에서 수동 실행
 
@@ -27,6 +32,9 @@ python scripts/fetch_spot.py polypropylene   # PP만
 python scripts/fetch_sunsirs.py              # 황산 + 유황 둘 다
 python scripts/fetch_sunsirs.py sulfuric_acid
 python scripts/fetch_sunsirs.py sulfur
+
+# Opinet (원유/나프타 월평균, 2024-01 ~ 오늘)
+python scripts/fetch_opinet.py
 ```
 
 ## 데이터 스키마
@@ -61,3 +69,15 @@ SunSirs 가격 페이지는 항상 최근 6일치를 보여준다. 그래서 `fe
 **SunSirs 접근 방식**: 페이지가 JS 챌린지("HW_CHECK" 쿠키)로 봇을 막는데, 첫 응답
 본문에 쿠키 값이 그대로 박혀 있어(`var _0x2 = "<hex>"`) 그 값을 파싱해 두 번째
 요청에 실으면 통과된다. 자세한 내용은 `scripts/fetch_sunsirs.py` 상단 주석 참고.
+
+### `data/opinet_monthly_avg.csv` (Opinet)
+
+| 컬럼 | 설명 |
+|---|---|
+| month | YYYY-MM |
+| Dubai / Brent / WTI / Naphtha | 해당 월 일별 현물가($/Bbl)의 평균, 소수 둘째 자리 반올림 |
+
+**Opinet 접근 방식**: 공식 유가정보 API는 국내 주유소 가격 위주라 국제유가/나프타를
+안 주므로, 화면의 CSV 다운로드 기능(`POST /glopcoil_csv.do` 원유,
+`POST /glopopd_csv.do` 석유제품)을 그대로 호출한다. 응답은 EUC-KR 인코딩,
+날짜는 "YY년MM월DD일" 형식. 자세한 내용은 `scripts/fetch_opinet.py` 상단 주석 참고.
