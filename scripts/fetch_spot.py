@@ -42,26 +42,38 @@ def fetch_spot(slug: str) -> dict:
     if "<title>\n\tTRADING ECONOMICS" in html and slug not in html.lower()[:2000]:
         raise RuntimeError(f"[{slug}] 상품 페이지가 존재하지 않음 (홈으로 폴백됨)")
 
+    # TE가 1년 전 대비 문구를 상품마다 다르게 두 가지 템플릿으로 내보낸다:
+    #   "and is up/down X% compared to the same time last year"
+    #   "but it is still X% higher/lower than a year ago"
+    year_clause = (
+        r"(?:and is (?P<y_dir_a>up|down) (?P<y_pct_a>[\d\.]+)% compared to the same time last year"
+        r"|but it is still (?P<y_pct_b>[\d\.]+)% (?P<y_dir_b>higher|lower) than a year ago)"
+    )
+
     m = re.search(
         r"(?:rose|fell) to ([\d,\.]+) ([A-Z/]+) on ([A-Za-z]+ \d+, \d{4}), "
         r"(up|down) ([\d\.]+)% from the previous day\. "
-        r"Over the past month, [^.]+ has (risen|fallen) ([\d\.]+)%, "
-        r"and is (up|down) ([\d\.]+)% compared to the same time last year",
+        r"Over the past month, [^.]+ has (risen|fallen) ([\d\.]+)%, " + year_clause,
         html,
     )
     if m:
-        value, unit, date_str, d_dir, d_pct, m_dir, m_pct, y_dir, y_pct = m.groups()
+        value, unit, date_str, d_dir, d_pct, m_dir, m_pct = m.group(1, 2, 3, 4, 5, 6, 7)
     else:
         m = re.search(
             r"traded flat at ([\d,\.]+) ([A-Z/]+) on ([A-Za-z]+ \d+, \d{4})\. "
-            r"Over the past month, [^.]+ has (risen|fallen) ([\d\.]+)%, "
-            r"and is (up|down) ([\d\.]+)% compared to the same time last year",
+            r"Over the past month, [^.]+ has (risen|fallen) ([\d\.]+)%, " + year_clause,
             html,
         )
         if not m:
             raise RuntimeError(f"[{slug}] 가격 문구 파싱 실패 — TE가 페이지 문구를 바꿨을 가능성")
-        value, unit, date_str, m_dir, m_pct, y_dir, y_pct = m.groups()
+        value, unit, date_str, m_dir, m_pct = m.group(1, 2, 3, 4, 5)
         d_dir, d_pct = "up", "0"
+
+    if m.group("y_dir_a"):
+        y_dir, y_pct = m.group("y_dir_a"), m.group("y_pct_a")
+    else:
+        y_pct = m.group("y_pct_b")
+        y_dir = "up" if m.group("y_dir_b") == "higher" else "down"
 
     sign = lambda direction, pct: float(pct) * (1 if direction in ("up", "risen") else -1)
     parsed_date = datetime.strptime(date_str, "%B %d, %Y").strftime("%Y-%m-%d")
